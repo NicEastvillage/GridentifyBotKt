@@ -1,6 +1,9 @@
 package east.gridentify
 
 class Move(val invseq: MutableList<Pos>, val result: Tile, var unlikelyhood: Int) {
+
+    val size: Int get() = invseq.size
+
     override fun toString(): String = invseq.joinToString(prefix = "[", postfix = ": result=${result.toInt()}, p=1/$unlikelyhood]")
 
     fun asBoardString(): String {

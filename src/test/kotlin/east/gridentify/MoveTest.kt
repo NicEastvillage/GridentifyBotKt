@@ -93,7 +93,7 @@ class MoveTest {
         val move = findAllMoves(board).last()
         assert(move.toString() == "[(1, 2), (2, 2), (3, 2): result=9, p=1/9]")
 
-        board.perform(move)
+        board.performTheoretically(move)
         assert(board.toString() == """
             |   8   9   8   9   8 |
             |   9   8   9   8   9 |

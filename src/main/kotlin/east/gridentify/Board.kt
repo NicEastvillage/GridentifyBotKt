@@ -6,7 +6,7 @@ class Board(val tiles: Array<Array<Tile>>, var scoreMin: Int = 0, var scoreMax: 
 
     companion object {
         fun newRandom(): Board {
-            return Board(Array(N) { Array(N) { Tile.Normal(Random.nextInt(R) + 1) as Tile } })
+            return Board(Array(N) { Array(N) { Tile.Normal() as Tile } })
         }
 
         fun fromInts(values: Array<Int>): Board {
@@ -35,7 +35,7 @@ class Board(val tiles: Array<Array<Tile>>, var scoreMin: Int = 0, var scoreMax: 
         return pos.x in 0 until N && pos.y in 0 until N
     }
 
-    fun perform(move: Move) {
+    fun performTheoretically(move: Move) {
         undoStack.add(UndoMoveInfo(move.invseq.map { pos -> pos to this[pos] }.toMap(), scoreMin, scoreMax))
         this[move.invseq.first()] = move.result
         for (i in 1 until move.invseq.size) {
@@ -51,6 +51,21 @@ class Board(val tiles: Array<Array<Tile>>, var scoreMin: Int = 0, var scoreMax: 
                 scoreMin += move.result.depth
                 scoreMax += move.result.depth * R
             }
+        }
+    }
+
+    fun perform(move: Move) {
+        if (move.result is Tile.Normal) {
+            undoStack.add(UndoMoveInfo(move.invseq.map { pos -> pos to this[pos] }.toMap(), scoreMin, scoreMax))
+            this[move.invseq.first()] = move.result
+            for (i in 1 until move.invseq.size) {
+                val pos = move.invseq[i]
+                this[pos] = Tile.Normal()
+            }
+            scoreMin += move.result.value
+            scoreMax += move.result.value
+        } else {
+            throw AssertionError("Don't create wilds during simulation")
         }
     }
 

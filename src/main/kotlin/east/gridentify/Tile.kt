@@ -1,7 +1,9 @@
 package east.gridentify
 
+import kotlin.random.Random
+
 sealed class Tile {
-    class Normal(val value: Int) : Tile() {
+    class Normal(val value: Int = Random.nextInt(R) + 1) : Tile() {
         override fun values(): Set<Int> = setOf(value)
         override fun str(): String = when {
             value < 10 -> "  $value"
