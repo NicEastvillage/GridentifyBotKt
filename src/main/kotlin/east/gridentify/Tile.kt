@@ -11,6 +11,8 @@ sealed class Tile {
             else -> "$value"
         }
         override fun toInt(): Int = value
+        override fun avgValue(): Int = value
+        override fun minValue(): Int = value
     }
 
     class Wild(val depth: Int = 1) : Tile() {
@@ -20,9 +22,13 @@ sealed class Tile {
             else -> "?$depth"
         }
         override fun toInt(): Int = -depth
+        override fun avgValue(): Int = 2 * depth
+        override fun minValue(): Int = depth
     }
 
     abstract fun values(): Set<Int>
     abstract fun str(): String
     abstract fun toInt(): Int
+    abstract fun avgValue(): Int
+    abstract fun minValue(): Int
 }
