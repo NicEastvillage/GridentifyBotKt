@@ -2,11 +2,11 @@ package east.gridentify
 
 import kotlin.random.Random
 
-class Board(val tiles: Array<Array<Tile>>, var scoreMin: Int = 0, var scoreMax: Int = 0) {
+class Board(val tiles: MutableList<MutableList<Tile>>, var scoreMin: Int = 0, var scoreMax: Int = 0) {
 
     companion object {
         fun newRandom(): Board {
-            return Board(Array(N) { Array(N) { Tile.Normal() as Tile } })
+            return Board(Array(N) { Array(N) { Tile.Normal() as Tile }.toMutableList() }.toMutableList())
         }
 
         fun fromInts(values: Array<Int>): Board {
@@ -19,8 +19,8 @@ class Board(val tiles: Array<Array<Tile>>, var scoreMin: Int = 0, var scoreMax: 
                     } else {
                         Tile.Wild(-values[i++])
                     }
-                }
-            })
+                }.toMutableList()
+            }.toMutableList())
         }
     }
 
@@ -87,9 +87,22 @@ class Board(val tiles: Array<Array<Tile>>, var scoreMin: Int = 0, var scoreMax: 
         }
     }
 
+    fun copy(): Board {
+        return Board(Array(N) { y -> Array(N) { x -> this[x, y].copy() }.toMutableList() }.toMutableList(), scoreMin, scoreMax)
+    }
+
     override fun toString(): String {
         return tiles.joinToString(postfix = "\n(score: ${scoreAsStr()})\n", separator = "\n") { row ->
             row.joinToString(prefix = "| ", postfix = " |", separator = " ") { it.str() }
         }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other == null || other !is Board) return false
+        return tiles == other.tiles
+    }
+
+    override fun hashCode(): Int {
+        return tiles.hashCode()
     }
 }

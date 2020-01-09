@@ -1,5 +1,7 @@
 package east.gridentify
 
+import java.util.*
+import kotlin.collections.HashSet
 import kotlin.system.measureTimeMillis
 
 const val N = 5
@@ -68,28 +70,47 @@ fun findAllMoves(board: Board): List<Move> {
     return allMoves
 }
 
+fun findNeighbourPairsSum(board: Board): Int {
+    var sum = 0
+    for (y in 0 until N) {
+        for (x in y until N) {
+            if (y < N - 1 && board[x, y] == board[x, y + 1])
+                sum += board[x, y].avgValue() * 2
+            if (x < N - 1 && board[x, y] == board[x + 1, y])
+                sum += board[x, y].avgValue() * 2
+        }
+    }
+    return sum
+}
+
 typealias UtilityFunc = (Board, List<Move>?) -> Double
 
-class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6) {
+class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6, val print: Boolean = true) {
 
-    fun start(utilityOfBoard: UtilityFunc) {
+    data class Result(val finalBoard: Board, val timeMillis: Long)
+
+    val transpositionTable = HashMap<Board, List<Move>>()
+
+    fun start(utilityOfBoard: UtilityFunc): Result {
         var moveNum = 0
         val millis = measureTimeMillis {
             while (true) {
-                println("Board:\n$board")
+                if (print) println("Board:\n$board")
                 val moves = findAllMoves(board)
                 if (moves.isEmpty()) break
 
                 val bestMove = moves
                         .filter { moves.size < panicAt || (it.size in smartMoveLens && it.result.toInt() in smartNumbers) }
-                        .maxBy { utilityOfMove(it, utilityOfBoard) }!!
+                        .maxBy { utilityOfMove(it, utilityOfBoard) } ?: moves.maxBy { utilityOfMove(it, utilityOfBoard) }!!
                 moveNum++
-                println("Move #$moveNum:\n${bestMove.asBoardString()}")
+                if (print) println("Move #$moveNum:\n${bestMove.asBoardString()}")
                 board.perform(bestMove)
             }
         }
 
-        println("Game over! (${formatTime(millis)})")
+        if (print) println("Game over! (${formatTime(millis)})")
+
+        return Result(board.copy(), millis)
     }
 
     private fun utilityOfMove(move: Move, utilityOfBoard: UtilityFunc, currentDepth: Int = 1): Double {
@@ -102,7 +123,7 @@ class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6) {
             return utility
         }
 
-        val moves = findAllMoves(board)
+        val moves = transpositionTable[board] ?: findAllMoves(board).also { transpositionTable[board] = it }
         if (moves.isEmpty()) {
             // No more moves, return utility of current board
             val utility = utilityOfBoard(board, moves)
@@ -110,7 +131,7 @@ class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6) {
             return utility
         }
 
-        // Return highest utility of subsequent moves' utility scores
+        // Return the weighted sum of subsequent moves' utility scores
         val utility = moves
                 .filter { moves.size < panicAt || (it.size in smartMoveLens && it.result.toInt() in smartNumbers) }
                 .map { utilityOfMove(it, utilityOfBoard, currentDepth + 1) / it.unlikelyhood }
@@ -121,19 +142,33 @@ class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6) {
 }
 
 fun main() {
-    println("Hello Gridentify")
-
     val weights = arrayOf(
-            arrayOf(6, 3, 4, 5, 6),
-            arrayOf(5, 2, 1, 2, 3),
-            arrayOf(4, 1, 0, 1, 4),
-            arrayOf(3, 2, 1, 2, 5),
-            arrayOf(6, 5, 4, 3, 6)
-    ).flatten()
+            arrayOf(4, 3, 1, 3, 4),
+            arrayOf(3, 2, 1, 2, 3),
+            arrayOf(2, 1, 0, 1, 2),
+            arrayOf(3, 2, 1, 2, 3),
+            arrayOf(4, 3, 2, 3, 4)
+    ).flatten().map { it * it }
 
-    val bot = GridentifyBot(Board.newRandom(), depth = 2)
-    bot.start { board, chachedMoves ->
-        val moves = chachedMoves ?: findAllMoves(board)
-        moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
+    val bots = 20
+
+    val results = (0 until bots).map { i ->
+        val bot = GridentifyBot(Board.newRandom(), depth = 2, print = false)
+        bot.start { board, cachedMoves ->
+            //val moves = cachedMoves ?: findAllMoves(board)
+            //moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
+            8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
+        }.also { (board, millis) ->
+            println("Bot ${i + 1}/$bots ::: score: ${board.scoreMin}, time: ${formatTime(millis)}")
+        }
     }
+
+    val bestScore = results.maxBy { (board, _) -> board.scoreMin }!!.finalBoard.scoreMin
+    val avgScore = results.map { (board, _) -> board.scoreMin }.average()
+    val avgMillis = results.map { (_, millis) -> millis }.average().toLong()
+
+    println("\n$bots runs done!")
+    println("Best score: $bestScore")
+    println("Average score: $avgScore")
+    println("Average time: ${formatTime(avgMillis)}")
 }
