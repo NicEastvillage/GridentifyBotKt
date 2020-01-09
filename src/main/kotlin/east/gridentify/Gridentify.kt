@@ -1,7 +1,10 @@
 package east.gridentify
 
+import kotlinx.coroutines.*
 import java.util.*
+import java.util.concurrent.Executors
 import kotlin.collections.HashSet
+import kotlin.math.pow
 import kotlin.system.measureTimeMillis
 
 const val N = 5
@@ -150,24 +153,34 @@ fun main() {
             arrayOf(4, 3, 2, 3, 4)
     ).flatten().map { it * it }
 
-    val bots = 20
+    val bots = 40
 
-    val results = (0 until bots).map { i ->
-        val bot = GridentifyBot(Board.newRandom(), depth = 2, print = false)
-        bot.start { board, cachedMoves ->
-            //val moves = cachedMoves ?: findAllMoves(board)
-            //moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
-            8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
-        }.also { (board, millis) ->
-            println("Bot ${i + 1}/$bots ::: score: ${board.scoreMin}, time: ${formatTime(millis)}")
+    val executor = Executors.newFixedThreadPool(5)
+    val results = mutableListOf<GridentifyBot.Result>()
+
+    for (i in 0 until bots) {
+        executor.execute {
+            val bot = GridentifyBot(Board.newRandom(), depth = 2, print = false)
+            bot.start { board, cachedMoves ->
+                //val moves = cachedMoves ?: findAllMoves(board)
+                //moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
+                8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
+            }.also {
+                val (board, millis) = it
+                results.add(it)
+                println("Bot ${results.size}/$bots | #${i + 1} ::: score: ${board.scoreMin}, time: ${formatTime(millis)}")
+            }
         }
     }
+
+    executor.shutdown()
+    while (!executor.isTerminated) { }
 
     val bestScore = results.maxBy { (board, _) -> board.scoreMin }!!.finalBoard.scoreMin
     val avgScore = results.map { (board, _) -> board.scoreMin }.average()
     val avgMillis = results.map { (_, millis) -> millis }.average().toLong()
 
-    println("\n$bots runs done!")
+    println("\n${results.size} runs done!")
     println("Best score: $bestScore")
     println("Average score: $avgScore")
     println("Average time: ${formatTime(avgMillis)}")
