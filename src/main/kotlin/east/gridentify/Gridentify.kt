@@ -46,12 +46,15 @@ val weights = arrayOf(
 
 @ExperimentalStdlibApi
 fun main() {
-    HytakServerBoard("East", "35.193.192.221", 32123).use { hytakBoard ->
-        val bot = GridentifyBot(hytakBoard, depth = 2)
-        bot.start { board, cachedMoves ->
-            //val moves = cachedMoves ?: findAllMoves(board)
-            //moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
-            8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
+    for (x in 0..1) {
+        HytakServerBoard("East", "35.193.192.221", 32123).use { hytakBoard ->
+            val bot = GridentifyBot(hytakBoard, depth = 2)
+            bot.start { board, cachedMoves ->
+                //val moves = cachedMoves ?: findAllMoves(board)
+                //moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
+                8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
+            }
         }
+        Thread.sleep(20)
     }
 }

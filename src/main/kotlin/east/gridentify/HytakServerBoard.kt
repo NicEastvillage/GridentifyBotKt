@@ -18,6 +18,7 @@ class HytakServerBoard(nickname: String, host: String, port: Int) : Board(Array(
     private val writer = BufferedOutputStream(socket.getOutputStream())
 
     init {
+        socket.tcpNoDelay = true
         writer.write("\"$nickname\"".toByteArray())
         send()
         println("Succesfully connected to $host:$port with nickname \"$nickname\"")
