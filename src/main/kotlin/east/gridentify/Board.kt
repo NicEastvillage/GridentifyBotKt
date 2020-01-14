@@ -2,7 +2,7 @@ package east.gridentify
 
 import kotlin.random.Random
 
-class Board(val tiles: MutableList<MutableList<Tile>>, var scoreMin: Int = 0, var scoreMax: Int = 0) {
+open class Board(val tiles: MutableList<MutableList<Tile>>, var scoreMin: Int = 0, var scoreMax: Int = 0) {
 
     companion object {
         fun newRandom(): Board {
@@ -54,7 +54,7 @@ class Board(val tiles: MutableList<MutableList<Tile>>, var scoreMin: Int = 0, va
         }
     }
 
-    fun perform(move: Move) {
+    open fun perform(move: Move) {
         if (move.result is Tile.Normal) {
             undoStack.add(UndoMoveInfo(move.invseq.map { pos -> pos to this[pos] }.toMap(), scoreMin, scoreMax))
             this[move.invseq.first()] = move.result
@@ -69,7 +69,7 @@ class Board(val tiles: MutableList<MutableList<Tile>>, var scoreMin: Int = 0, va
         }
     }
 
-    fun undo() {
+    open fun undo() {
         val undoMoveInfo = undoStack.removeAt(undoStack.size - 1)
         for ((pos, tile) in undoMoveInfo.oldTiles) {
             this[pos] = tile
