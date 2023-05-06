@@ -1,7 +1,5 @@
 package east.gridentify
 
-import kotlin.random.Random
-
 open class Board(val tiles: MutableList<MutableList<Tile>>, var scoreMin: Int = 0, var scoreMax: Int = 0) {
 
     companion object {

@@ -2,69 +2,50 @@ package east.gridentify
 
 import java.util.concurrent.Executors
 
-fun runManyBots() {
-    val bots = 40
+fun runManyBots(bots: Int=30, threadCount: Int=6) {
 
-    val executor = Executors.newFixedThreadPool(5)
+    val executor = Executors.newFixedThreadPool(threadCount)
     val results = mutableListOf<GridentifyBot.Result>()
 
     for (i in 0 until bots) {
         executor.execute {
-            val bot = GridentifyBot(Board.newRandom(), depth = 2, print = false)
-            bot.start { board, cachedMoves ->
-                //val moves = cachedMoves ?: findAllMoves(board)
-                //moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
-                8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
-            }.also {
-                val (board, millis) = it
-                results.add(it)
-                println("Bot ${results.size}/$bots | #${i + 1} ::: score: ${board.scoreMin}, time: ${formatTime(millis)}")
+            val bot = GridentifyBot(Board.newRandom(), depth = 2) { board, cachedMoves ->
+//                val moves = cachedMoves ?: findAllMoves(board)
+//                moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
+                8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumOf { (tile, w) -> tile.avgValue() * w }.toDouble()
             }
+            val res = runLocalToCompletion(bot, print = false)
+            results.add(res)
+            println("Bot ${results.size}/$bots | #${i + 1} ::: score: ${res.finalBoard.scoreMin}, time: ${formatTime(res.timeMillis)}")
         }
     }
 
     executor.shutdown()
     while (!executor.isTerminated) { }
 
-    val bestScore = results.maxBy { (board, _) -> board.scoreMin }!!.finalBoard.scoreMin
-    val avgScore = results.map { (board, _) -> board.scoreMin }.average()
-    val avgMillis = results.map { (_, millis) -> millis }.average().toLong()
-
-    println("\n${results.size} runs done!")
-    println("Best score: $bestScore")
-    println("Average score: $avgScore")
-    println("Average time: ${formatTime(avgMillis)}")
+    printSummary(results)
 }
 
 @ExperimentalStdlibApi
-fun rubHytakServerBots() {
-    val bots = 5
-
+fun runHytakServerBots(bots: Int=5) {
     val results = mutableListOf<GridentifyBot.Result>()
 
     for (i in 0 until bots) {
-        HytakServerBoard("East", "35.193.192.221", 32123).use { hytakBoard ->
-            val bot = GridentifyBot(hytakBoard, depth = 2)
-            bot.start { board, cachedMoves ->
-                val moves = cachedMoves ?: findAllMoves(board)
-                8 * moves.size.toDouble() + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }
-                //8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
-            }.also {
-                val (board, millis) = it
-                results.add(it)
-                println("Bot ${results.size}/$bots | #${i + 1} ::: score: ${board.scoreMin}, time: ${formatTime(millis)}")
-            }
+        val bot = GridentifyBot(Board.newRandom(), depth = 2) { board, cachedMoves ->
+            val moves = cachedMoves ?: findAllMoves(board)
+            8 * moves.size.toDouble() + board.tiles.flatten().zip(weights).sumOf { (tile, w) -> tile.avgValue() * w }
+            //8 * findNeighbourPairsSum(board) + board.tiles.flatten().zip(weights).sumBy { (tile, w) -> tile.avgValue() * w }.toDouble()
+        }
+        val res = runOlineToCompletion(bot, "wss://server.lucasholten.com", 21212)
+        if (res != null) {
+            results.add(res)
+            println("Bot ${results.size}/$bots | #${i + 1} ::: score: ${res.finalBoard.scoreMin}, time: ${formatTime(res.timeMillis)}")
+        } else {
+            println("Bot ${results.size}/$bots | #${i + 1} ::: DNF")
         }
     }
 
-    val bestScore = results.maxBy { (board, _) -> board.scoreMin }!!.finalBoard.scoreMin
-    val avgScore = results.map { (board, _) -> board.scoreMin }.average()
-    val avgMillis = results.map { (_, millis) -> millis }.average().toLong()
-
-    println("\n${results.size} runs done!")
-    println("Best score: $bestScore")
-    println("Average score: $avgScore")
-    println("Average time: ${formatTime(avgMillis)}")
+    printSummary(results)
 }
 
 val weights = arrayOf(
@@ -77,5 +58,6 @@ val weights = arrayOf(
 
 @ExperimentalStdlibApi
 fun main() {
-    rubHytakServerBots()
+    runHytakServerBots()
+//    runManyBots()
 }

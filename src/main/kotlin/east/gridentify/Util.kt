@@ -1,7 +1,25 @@
 package east.gridentify
 
+import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.pow
 
+
+fun printSummary(results: Iterable<GridentifyBot.Result>) {
+    val count = results.count()
+    val bestScore = results.maxByOrNull { (board, _) -> board.scoreMin }!!.finalBoard.scoreMin
+    val meanScore = results.map { (board, _) -> board.scoreMin }.average()
+    val stdDevScore = (results.map { (board, _) -> (board.scoreMin - meanScore).pow(2) }.sum() / count).pow(0.5)
+    val meanMillis = results.map { (_, millis) -> millis }.average().toLong()
+    val stdDevMillis = (results.map { (_, millis) -> (millis - meanMillis).toDouble().pow(2) }.sum() / count).pow(0.5).toLong()
+
+    println("\nSummary of $count runs:")
+    println("* Best score: $bestScore")
+    println("* Mean score: ${String.format(Locale.US, "%.2f", meanScore)}")
+    println("* Std dev score: ${String.format(Locale.US, "%.2f", stdDevScore)}")
+    println("* Mean time: ${formatTime(meanMillis)}")
+    println("* Std dev time: ${formatTime(stdDevMillis)}")
+}
 
 fun formatTime(millis: Long): String {
     require(millis >= 0) { "Duration must be greater than zero!" }

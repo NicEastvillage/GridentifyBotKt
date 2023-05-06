@@ -1,14 +1,13 @@
 package east.gridentify
 
 import java.util.HashMap
-import kotlin.system.measureTimeMillis
 
 const val N = 5
 const val R = 3
 
 val smartNumbers = setOf(-2, -1, 1, 2, 3, 6, 12, 24, 48, 96, 192, 384, 768, 1536, 3072, 6144, 12288, 24578, 49152)
 val smartMoveLens = setOf(2, 3, 4, 6, 8, 12)
-val maxMoveLen = smartMoveLens.max()!!
+val maxMoveLen = smartMoveLens.max()
 
 fun findAllMoves(board: Board): List<Move> {
     fun findMovesStartingFrom(
@@ -29,7 +28,7 @@ fun findAllMoves(board: Board): List<Move> {
         val allChildMoves = mutableListOf<Move>()
         if (moveLen in smartMoveLens) {
             // We should include move that ends on this tile
-            val valueSize = moveLen * draggedValue.min()!! // Works for both Normal and Wild tiles. E.g. [3] or [3/6/9]
+            val valueSize = moveLen * draggedValue.min() // Works for both Normal and Wild tiles. E.g. [3] or [3/6/9]
             val result = if (draggedValue.size == 1) {
                 Tile.Normal(valueSize)
             } else {
@@ -84,32 +83,22 @@ fun findNeighbourPairsSum(board: Board): Int {
 
 typealias UtilityFunc = (Board, List<Move>?) -> Double
 
-class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6, val print: Boolean = true) {
+class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6, val utilityOfBoard: UtilityFunc) {
 
     data class Result(val finalBoard: Board, val timeMillis: Long)
 
     val transpositionTable = HashMap<Board, List<Move>>()
 
-    fun start(utilityOfBoard: UtilityFunc): Result {
-        var moveNum = 0
-        val millis = measureTimeMillis {
-            while (true) {
-                if (print) println("Board:\n$board")
-                val moves = findAllMoves(board)
-                if (moves.isEmpty()) break
+    fun bestMove(): Move? {
+        val moves = findAllMoves(board)
+        if (moves.isEmpty()) return null
 
-                val bestMove = moves
-                        .filter { moves.size < panicAt || (it.size in smartMoveLens && it.result.toInt() in smartNumbers) }
-                        .maxBy { utilityOfMove(it, utilityOfBoard) } ?: moves.maxBy { utilityOfMove(it, utilityOfBoard) }!!
-                moveNum++
-                if (print) println("Move #$moveNum:\n${bestMove.asBoardString()}")
-                board.perform(bestMove)
-            }
-        }
+        val best = moves
+            .filter { moves.size < panicAt || (it.size in smartMoveLens && it.result.toInt() in smartNumbers) }
+            .maxByOrNull { utilityOfMove(it, utilityOfBoard) }
+            ?: moves.maxByOrNull { utilityOfMove(it, utilityOfBoard) }!!
 
-        if (print) println("Game over! (${formatTime(millis)})")
-
-        return Result(board.copy(), millis)
+        return best
     }
 
     private fun utilityOfMove(move: Move, utilityOfBoard: UtilityFunc, currentDepth: Int = 1): Double {
@@ -132,9 +121,8 @@ class GridentifyBot(val board: Board, val depth: Int, val panicAt: Int = 6, val 
 
         // Return the weighted sum of subsequent moves' utility scores
         val utility = moves
-                .filter { moves.size < panicAt || (it.size in smartMoveLens && it.result.toInt() in smartNumbers) }
-                .map { utilityOfMove(it, utilityOfBoard, currentDepth + 1) / it.unlikelyhood }
-                .sum()
+            .filter { moves.size < panicAt || (it.size in smartMoveLens && it.result.toInt() in smartNumbers) }
+            .sumOf { utilityOfMove(it, utilityOfBoard, currentDepth + 1) / it.unlikelyhood }
         board.undo()
         return utility
     }
